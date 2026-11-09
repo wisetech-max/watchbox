@@ -18,7 +18,14 @@ function Anime() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 p-6">
         {anime.map((animeItem) => (
-          <MovieCard key={animeItem.id} movie={animeItem} />
+          <MovieCard
+            key={animeItem.id}
+            movie={{
+              ...animeItem,
+              title: animeItem.name,
+              releaseYear: animeItem.first_air_date?.split("-")[0],
+            }}
+          />
         ))}
       </div>
     </>

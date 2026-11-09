@@ -5,35 +5,50 @@ const BASE_URL = "https://api.themoviedb.org/3";
 
 const api = axios.create({
   baseURL: BASE_URL,
+  params: {
+    api_key: API_KEY,
+  },
 });
 
-const fetchMovies = async (endpoint) => {
+// Fetch 100 movies (30 pages × 10 movies)
+async function fetchMovies(endpoint, pages = 100) {
   try {
     if (!API_KEY) {
       throw new Error("TMDb API key is missing. Check your .env file.");
     }
 
-    const response = await api.get(endpoint, {
-      params: {
-        api_key: API_KEY,
-      },
-    });
+    // const requests = Array.from({ length: pages }, (_, index) =>
+    //   api.get(endpoint, {
+    //     params: {
+    //       api_key: API_KEY,
+    //       page: index + 1,
+    //     },
+    //   }),
+    // );
 
-    return response.data.results ?? [];
-  } catch (error) {
-    console.error(
-      `Error fetching ${endpoint}:`,
-      error.response?.status,
-      error.response?.data ?? error.message,
+    const requests = Array.from({ length: pages }, (_, index) =>
+      api.get(endpoint, {
+        params: {
+          api_key: API_KEY,
+          page: index + 1,
+        },
+      }),
     );
 
+    const responses = await Promise.all(requests);
+    return responses.flatMap((res) => res.data.results);
+  } catch (error) {
+    console.error(`Error fetching ${endpoint}:`, error);
     throw error;
   }
-};
+}
 
+// TMDb API endpoints
 export const tmdbAPI = {
   popularTV: () => fetchMovies("/tv/popular"),
+
   trending: () => fetchMovies("/trending/movie/week"),
+
   anime: () =>
     fetchMovies(
       "/discover/tv?with_genres=16&with_origin_country=JP&sort_by=popularity.desc",
@@ -44,6 +59,7 @@ export const tmdbAPI = {
   nowPlaying: () => fetchMovies("/movie/now_playing"),
 };
 
+// Fetch movie trailers
 export const getMovieTrailer = async (movieId) => {
   try {
     const response = await api.get(`/movie/${movieId}/videos`, {
@@ -61,11 +77,11 @@ export const getMovieTrailer = async (movieId) => {
   }
 };
 
+// Search movies
 export const searchMovies = async (query) => {
   try {
     const response = await api.get("/search/movie", {
       params: {
-        api_key: API_KEY,
         query,
       },
     });
@@ -77,4 +93,5 @@ export const searchMovies = async (query) => {
   }
 };
 
+// TMDb image URL
 export const imageURL = "https://image.tmdb.org/t/p/w500";

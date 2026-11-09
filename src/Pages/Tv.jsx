@@ -16,7 +16,15 @@ function Tv() {
 
         const data = await tmdbAPI.popularTV();
 
-        setTvShows(Array.isArray(data) ? data : []);
+        setTvShows(
+          Array.isArray(data)
+            ? data.map((show) => ({
+                ...show,
+                title: show.name,
+                releaseYear: show.first_air_date?.split("-")[0],
+              }))
+            : [],
+        );
       } catch (err) {
         console.error("Error fetching TV shows:", err);
         setError("Failed to load TV shows. Please try again later.");

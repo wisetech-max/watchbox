@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { imageURL } from "../Services/Tmdb";
 import { addToWatchlist, isInWatchlist } from "../Services/Watchlist";
 import Trailer from "../Components/Trailer";
@@ -7,6 +7,9 @@ import Trailer from "../Components/Trailer";
 function MovieDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const mediaType = searchParams.get("type") || "movie";
 
   const [movie, setMovie] = useState(null);
   const [inWatchlist, setInWatchlist] = useState(false);
@@ -20,16 +23,34 @@ function MovieDetails() {
   useEffect(() => {
     async function fetchMovie() {
       try {
+        setMovie(null);
+
+        const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
+
+        const endpoint = mediaType === "tv" ? "tv" : "movie";
+
         const response = await fetch(
-          `https://api.themoviedb.org/3/movie/${id}?api_key=${import.meta.env.VITE_TMDB_API_KEY}`,
+          `https://api.themoviedb.org/3/${endpoint}/${id}?api_key=${API_KEY}`,
         );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch movie details");
+        }
 
         const data = await response.json();
 
-        setMovie(data);
+        setMovie({
+          ...data,
 
-        // Dynamic SEO
-        document.title = `${data.title} | WatchBox`;
+          // Normalize movie and TV show properties
+          title: data.title || data.name,
+
+          release_date: data.release_date || data.first_air_date,
+
+          runtime: data.runtime || data.episode_run_time?.[0] || null,
+        });
+
+        document.title = `${data.title || data.name} | WatchBox`;
 
         const metaDescription = document.querySelector(
           'meta[name="description"]',
@@ -38,16 +59,16 @@ function MovieDetails() {
         if (metaDescription) {
           metaDescription.setAttribute(
             "content",
-            data.overview || "Watch movies online on WatchBox",
+            data.overview || "Watch movies and TV shows on WatchBox",
           );
         }
       } catch (error) {
-        console.log(error);
+        console.error("Error fetching details:", error);
       }
     }
 
     fetchMovie();
-  }, [id]);
+  }, [id, mediaType]);
 
   if (!movie) {
     return (
@@ -65,8 +86,8 @@ function MovieDetails() {
         <img
           src={
             movie.backdrop_path
-              ? `${imageURL}${movie.backdrop_path}`
-              : "https://via.placeholder.com/1200x700?text=No+Image"
+              ? `https://image.tmdb.org/t/p/original${movie.backdrop_path}`
+              : "https://placehold.co/1200x700?text=No+Image"
           }
           alt={movie.title}
           className="absolute inset-0 w-full h-full object-cover"
@@ -92,8 +113,8 @@ function MovieDetails() {
               <img
                 src={
                   movie.poster_path
-                    ? `${imageURL}${movie.poster_path}`
-                    : "https://via.placeholder.com/500x750?text=No+Poster"
+                    ? `https://image.tmdb.org/t/p/original${movie.poster_path}`
+                    : "https://placehold.co/500x750?text=No+Poster"
                 }
                 alt={movie.title}
                 className="w-60 sm:w-72 md:w-80 rounded-3xl shadow-2xl border border-white/10"
